@@ -1,6 +1,6 @@
 # ospf2dot
 
-Converts the output of Cisco IOS command "show ip ospf database neighbor" into
+Converts the output of Cisco IOS command "show ip ospf database router" into
 a GraphViz DOT file.
 
 GraphViz can then plot the DOT file into a vertex / edge style graph depicting
