@@ -132,6 +132,8 @@ print("ospf2dot - takes the output of \"show ip ospf database router\" and outpu
 print("v0.1 alpha, By Foeh Mannay, April 2016\n")
 
 filename = input("Enter input filename: ")
+neighbour = None
+stubnet = None
 
 with open(filename, 'r') as infile:
 	for line in infile:
@@ -162,7 +164,7 @@ with open(filename, 'r') as infile:
 			continue
 		m = re.search('TOS 0 Metrics: (\d*)', line)
 		if(m):
-			if(stubnet is None):
+			if(neighbour is not None):
 				rtr.addlink(neighbour, interfaceip, m.group(1))
 				neighbour=None
 				interfaceip=None

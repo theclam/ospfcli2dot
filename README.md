@@ -7,7 +7,11 @@ GraphViz can then plot the DOT file into a vertex / edge style graph depicting
 your network topology and the associated OSPF costs. Any asymmetric link costs
 (different cost set on each end of the link) show up in red.
 
-This script requires Python 3
+The script seems to also work with the output of Cisco ASAs (it is basically
+identical to that of a router). It does not yet work with broadcast networks
+as I've not been bothered to write that part yet.
+
+This script requires Python 3.
 
 Usage - Linux / Mac
 ===================
