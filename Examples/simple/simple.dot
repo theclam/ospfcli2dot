@@ -1,0 +1,12 @@
+digraph Topology {
+	h1x1x1x1 [label="1.1.1.1\nR1"]
+	h2x2x2x2 [label="2.2.2.2\nR2"]
+	h3x3x3x3 [label="3.3.3.3\nR3"]
+	h4x4x4x4 [label="4.4.4.4\nR4"]
+	h1x1x1x1 -> h2x2x2x2[label="1", dir=none]
+	h1x1x1x1 -> h3x3x3x3[label="1", dir=none]
+	h1x1x1x1 -> h4x4x4x4[label="1", dir=none]
+	h2x2x2x2 -> h3x3x3x3[label="1", dir=none]
+	h2x2x2x2 -> h4x4x4x4[label="1", dir=forward color="red"]
+	h4x4x4x4 -> h2x2x2x2[label="1000", dir=forward color="red"]
+}
