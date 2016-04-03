@@ -8,8 +8,12 @@ your network topology and the associated OSPF costs. Any asymmetric link costs
 (different cost set on each end of the link) show up in red.
 
 The script seems to also work with the output of Cisco ASAs (it is basically
-identical to that of a router). It does not yet work with broadcast networks
-as I've not been bothered to write that part yet.
+identical to that of a router).
+
+Support has been added for broadcast networks. At the moment it just shows the DR as
+opposed to the full network / mask as this information in not available in the output of
+"show ip ospf database router". I may add support to populate the missing details from
+the output of "show ip ospf network" later.
 
 This script requires Python 3.
 
@@ -52,7 +56,4 @@ foeh@feeble ~ $ dot -Tgif -omytopology.gif mytopology.dot
 Bugs
 ====
 
-So far I have only tested this againts one device's output. I expect that means
-it will break when output from other devices is used :D
-
-Oh, and I won't lie to you, I write terrible Python.
+My Python is pretty scruffy but it seems to work.

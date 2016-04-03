@@ -2,10 +2,13 @@
 
 # ospf2dot - by Foeh Mannay
 #
-# Converts the output of the "show ip ospf database router" command into a GraphViz DOT file.
+# Converts the output of the "show ip ospf database router" command into a GraphViz DOT 
+# file.
 #
-# The DOT file can then be used to automatically plot network topology diagrams and, while the layout
-# can often leave a lot to be desired, it is very easy to spot asymmetric OSPF costs and other anomalies.
+# The DOT file can then be used to automatically plot network topology diagrams and, while
+# the layout can often leave a lot to be desired, it is very easy to spot asymmetric OSPF
+# costs and other anomalies. Routers are enumerated first so you can group them by hand if
+# you so desire.
 
 import re
 
@@ -106,6 +109,7 @@ class Router:
 		self.hostname = rid
 		self.stubs = []
 		self.links = []
+		self.transits = []
 	
 	def sethostname(self, str):
 		self.hostname = str
@@ -116,9 +120,14 @@ class Router:
 	def addlink(self, neighbour, ip, metric):
 		self.links.append([neighbour, ip, metric])
 	
+	def addtransit(self, dr, metric):
+		self.transits.append([dr, metric])
+		
 	def dottifyrouter(self):
 		# Produces a DOT representation of the router this object represents
-		rv = ('\th' + re.sub('\.','x',self.routerid) + ' [label="' + self.routerid + '\\n' + self.hostname)
+		rv = ('\th' + re.sub('\.','x',self.routerid) + ' [label="' + self.routerid)
+		if(self.routerid != self.hostname):
+			rv = rv + '\\n' + self.hostname
 		# Unhash this if you want all stubs to be listed on your nodes
 		#for i in self.stubs:
 		#	rv += ('\n' + i[0] + toslash(i[1]))
@@ -127,13 +136,15 @@ class Router:
 
 routers=[]
 links=[]
+transits=[]
 
 print("ospf2dot - takes the output of \"show ip ospf database router\" and outputs a GraphViz DOT file corresponding to the network topology\n")
-print("v0.1 alpha, By Foeh Mannay, April 2016\n")
+print("v0.2 alpha, By Foeh Mannay, April 2016\n")
 
 filename = input("Enter input filename: ")
 neighbour = None
 stubnet = None
+transit = None
 
 with open(filename, 'r') as infile:
 	for line in infile:
@@ -162,16 +173,25 @@ with open(filename, 'r') as infile:
 		if(m):
 			interfaceip = m.group(1)
 			continue
+		m = re.search('\(Link ID\) Designated Router address: (\d*.\d*.\d*.\d*)', line)
+		if(m):
+			transit = m.group(1)
+			continue
 		m = re.search('TOS 0 Metrics: (\d*)', line)
 		if(m):
 			if(neighbour is not None):
 				rtr.addlink(neighbour, interfaceip, m.group(1))
-				neighbour=None
-				interfaceip=None
-			else:
+				neighbour = None
+				interfaceip = None
+			elif(stubnet is not None):
 				rtr.addstub(stubnet, stubmask, m.group(1))
-				stubnet=None
-				stubmask=None
+				stubnet = None
+				stubmask = None
+			elif(transit is not None):
+				if(transit not in transits):
+					transits.append(transit)
+				rtr.addtransit(transit, m.group(1))
+				transit = None
 			continue
 
 filename = input("Enter output filename: ")
@@ -180,7 +200,13 @@ with open(filename, 'w') as outfile:
 	for r in routers:
 		# Ask each Router object in turn to describe itself
 		outfile.write(r.dottifyrouter())
+	for t in transits:
+		# Create items for transit networks
+		outfile.write('\tt' + re.sub('\.','x',t) + ' [label="LAN with DR\\n' + t + '", shape=box]\n')
 	for r in routers:
+		for t in r.transits:
+			# Dump transit connections
+			outfile.write('\th' + re.sub('\.','x',r.routerid) + ' -> t' + re.sub('\.','x',t[0]) + '[label="' + t[1] + '"]\n')
 		for l in r.links:
 			# Create a list of all router links (src, dest, IP, metric, style)
 			links.append([r.routerid, l[0], l[1], l[2], 'forward color="red"'])

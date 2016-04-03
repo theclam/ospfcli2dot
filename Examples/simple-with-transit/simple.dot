@@ -1,0 +1,11 @@
+digraph Topology {
+	h1x1x1x1 [label="1.1.1.1\nR1"]
+	h2x2x2x2 [label="2.2.2.2\nR2"]
+	h3x3x3x3 [label="3.3.3.3\nR3"]
+	h4x4x4x4 [label="4.4.4.4\nR4"]
+	t10x0x0x1 [label="LAN with DR\n10.0.0.1", shape=box]
+	h1x1x1x1 -> t10x0x0x1[label="1"]
+	h2x2x2x2 -> t10x0x0x1[label="1"]
+	h3x3x3x3 -> t10x0x0x1[label="1"]
+	h3x3x3x3 -> h4x4x4x4[label="1", dir=none]
+}
