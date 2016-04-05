@@ -1,4 +1,4 @@
-# ospf2dot
+# ospfcli2dot
 
 Converts the output of Cisco IOS command "show ip ospf database router" into
 a GraphViz DOT file.
@@ -20,20 +20,20 @@ This script requires Python 3.
 Usage - Linux / Mac
 ===================
 
-Set the ospf2dot.py file as executable (chmod 755 ospf2dot.py) then run it
+Set the ospfcli2dot.py file as executable (chmod 755 ospfcli2dot.py) then run it
 
 Usage - Windows
 ===============
 
 Run python 3 then execute:
 
-exec(open("./ospf2dot.py").read())
+exec(open("./ospfcli2dot.py").read())
 
 Example
 =======
 
-foeh@feeble ~ $ ./ospf2dot.py
-ospf2dot - takes the output of "show ip ospf database router" and outputs a
+foeh@feeble ~ $ ./ospfcli2dot.py
+ospfcli2dot - takes the output of "show ip ospf database router" and outputs a
 GraphViz DOT file corresponding to the network topology
 
 v0.1 alpha, By Foeh Mannay, April 2016

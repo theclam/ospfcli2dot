@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# ospf2dot - by Foeh Mannay
+# ospfcli2dot - by Foeh Mannay
 #
 # Converts the output of the "show ip ospf database router" command into a GraphViz DOT 
 # file.
@@ -138,7 +138,7 @@ routers=[]
 links=[]
 transits=[]
 
-print("ospf2dot - takes the output of \"show ip ospf database router\" and outputs a GraphViz DOT file corresponding to the network topology\n")
+print("ospfcli2dot - takes the output of \"show ip ospf database router\" and outputs a GraphViz DOT file corresponding to the network topology\n")
 print("v0.2 alpha, By Foeh Mannay, April 2016\n")
 
 filename = input("Enter input filename: ")
