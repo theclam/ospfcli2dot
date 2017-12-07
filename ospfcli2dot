@@ -138,8 +138,8 @@ routers=[]
 links=[]
 transits=[]
 
-print("ospfcli2dot - takes the output of \"show ip ospf database router\" and outputs a GraphViz DOT file corresponding to the network topology\n")
-print("v0.2 alpha, By Foeh Mannay, April 2016\n")
+print("ospfcli2dot - takes the output of \"show ip ospf database router\" and optionally a hostfile\noutputs a GraphViz DOT file corresponding to the network topology\n")
+print("v0.3 alpha, By Foeh Mannay, December 2017\n")
 
 filename = input("Enter input filename: ")
 neighbour = None
@@ -194,12 +194,59 @@ with open(filename, 'r') as infile:
 				transit = None
 			continue
 
+filename = input("Enter hostnames file or press enter to continue without one: ")
+if(len(filename) > 0):
+	with open(filename, 'r') as infile:
+		for line in infile:
+			splitline = line.split()
+			# Discard anything which is not in the x.x.x.x xxxxx format
+			if(len(splitline) != 2):
+				continue
+			if(splitline[0][0] == '#'):
+				continue
+			# Try to find an IP and update hostnames if found...
+			m = re.search('(\d*.\d*.\d*.\d*)',splitline[0])
+			if(m):
+				for r in routers:
+					if(r.routerid == splitline[0]):
+						r.sethostname(splitline[1])
+
+
+separator = input ("If you want to group by hostname, enter the separator now\n (or press enter to continue): ")
+if(len(separator) > 0):
+	firstlast = ''
+	while((firstlast != 'f') & (firstlast != 'l')):
+		firstlast = input("Do you want to group by the [f]irst or [l]ast part of the hostname? ")
+	areas = set()
+	if(firstlast == 'f'):
+		firstlast = 0
+	else:
+		firstlast = -1
+	for r in routers:
+		if (r.hostname != r.routerid):
+			areas.add(r.hostname.split(separator)[0])
+
 filename = input("Enter output filename: ")
 with open(filename, 'w') as outfile:
 	outfile.write("digraph Topology {\n")
-	for r in routers:
-		# Ask each Router object in turn to describe itself
-		outfile.write(r.dottifyrouter())
+	# If we have areas defined, create them and put the routers inside:
+	if(areas):
+		for a in areas:
+			outfile.write("subgraph cluster_" + a + " {\n\tlabel=\"" + a + "\"\n")
+			for r in routers:
+				if(r.hostname.split(separator)[firstlast] == a):
+					outfile.write(r.dottifyrouter())
+			outfile.write("}\n")
+		for r in routers:
+			if(r.hostname == r.routerid):
+				outfile.write(r.dottifyrouter())
+
+	# Otherwise just dump out the routers:	
+	else:
+		for r in routers:
+			# Ask each Router object in turn to describe itself
+			outfile.write(r.dottifyrouter())
+
 	for t in transits:
 		# Create items for transit networks
 		outfile.write('\tt' + re.sub('\.','x',t) + ' [label="LAN with DR\\n' + t + '", shape=box]\n')
