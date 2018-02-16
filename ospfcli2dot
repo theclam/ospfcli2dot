@@ -212,12 +212,12 @@ if(len(filename) > 0):
 						r.sethostname(splitline[1])
 
 
+areas = set()
 separator = input ("If you want to group by hostname, enter the separator now\n (or press enter to continue): ")
 if(len(separator) > 0):
 	firstlast = ''
 	while((firstlast != 'f') & (firstlast != 'l')):
 		firstlast = input("Do you want to group by the [f]irst or [l]ast part of the hostname? ")
-	areas = set()
 	if(firstlast == 'f'):
 		firstlast = 0
 	else:
