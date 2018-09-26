@@ -139,7 +139,7 @@ links=[]
 transits=[]
 
 print("ospfcli2dot - takes the output of \"show ip ospf database router\" and optionally a hostfile\noutputs a GraphViz DOT file corresponding to the network topology\n")
-print("v0.3 alpha, By Foeh Mannay, December 2017\n")
+print("v0.4 alpha, By Foeh Mannay, September 2018\n")
 
 filename = input("Enter input filename: ")
 neighbour = None
