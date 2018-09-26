@@ -225,12 +225,14 @@ if(len(separator) > 0):
 	for r in routers:
 		if (r.hostname != r.routerid):
 			areas.add(r.hostname.split(separator)[0])
+else: 
+	areas = None
 
 filename = input("Enter output filename: ")
 with open(filename, 'w') as outfile:
 	outfile.write("digraph Topology {\n")
 	# If we have areas defined, create them and put the routers inside:
-	if(areas):
+	if(areas is not None):
 		for a in areas:
 			outfile.write("subgraph cluster_" + a + " {\n\tlabel=\"" + a + "\"\n")
 			for r in routers:

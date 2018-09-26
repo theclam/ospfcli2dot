@@ -42,14 +42,20 @@ foeh@feeble ~ $ ./ospfcli2dot.py
 ospfcli2dot - takes the output of "show ip ospf database router" and optionally a hostfile
 outputs a GraphViz DOT file corresponding to the network topology
 
-v0.3 alpha, By Foeh Mannay, December 2017
+v0.4 alpha, By Foeh Mannay, September 2018
 
 Enter input filename: cli-output.txt
+
 Enter hostnames file or press enter to continue without one: hosts
+
 If you want to group by hostname, enter the separator now
+
  (or press enter to continue): -
+
 Do you want to group by the [f]irst or [l]ast part of the hostname? f
+
 Enter output filename: mytopology.dot
+
 foeh@feeble ~ $
 
 Using DOT files
@@ -67,3 +73,10 @@ Bugs
 ====
 
 My Python is pretty scruffy but it seems to work.
+
+Not really my bug but the output of this script is *really* good at upsetting the
+graphviz "Error: trouble in init_rank" bug - I was pulling my hair out with this for
+the longest time but they have now fixed the layout engine. Upgrade to v1.4 or later
+and it should magically go away.
+
+
