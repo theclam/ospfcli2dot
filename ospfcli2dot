@@ -224,7 +224,7 @@ if(len(separator) > 0):
 		firstlast = -1
 	for r in routers:
 		if (r.hostname != r.routerid):
-			areas.add(r.hostname.split(separator)[0])
+			areas.add(r.hostname.split(separator)[firstlast])
 else: 
 	areas = None
 
