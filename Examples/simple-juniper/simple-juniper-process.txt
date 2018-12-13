@@ -1,0 +1,12 @@
+foeh@feeble ~/Projects/ospfcli2dot $ ./juni-ospfcli2dot
+ospfcli2dot - takes the output of JunOS "show ospf database extensive" and optionally a hostfile
+outputs a GraphViz DOT file corresponding to the network topology
+
+v0.4 alpha, By Foeh Mannay, September 2018
+
+Enter input filename: simple-juniper-cli-output.txt
+Enter hostnames file or press enter to continue without one:
+If you want to group by hostname, enter the separator now
+ (or press enter to continue):
+Enter output filename: simple-juniper.dot
+foeh@feeble ~/Projects/ospfcli2dot $ dot -Tgif -osimple-juniper.gif simple-juniper.dot

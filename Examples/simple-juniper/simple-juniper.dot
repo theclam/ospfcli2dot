@@ -1,0 +1,12 @@
+digraph Topology {
+	h10x255x255x1 [label="10.255.255.1"]
+	h10x255x255x2 [label="10.255.255.2"]
+	h100x100x100x0 [label="100.100.100.0"]
+	h100x100x100x2 [label="100.100.100.2"]
+	t192x168x12x2 [label="LAN with DR\n192.168.12.2", shape=box]
+	h100x100x100x0 -> t192x168x12x2[label="1"]
+	h100x100x100x2 -> t192x168x12x2[label="1"]
+	h10x255x255x1 -> h10x255x255x2[label="1", dir=none]
+	h10x255x255x1 -> h100x100x100x0[label="21", dir=forward color="red"]
+	h100x100x100x0 -> h10x255x255x1[label="1", dir=forward color="red"]
+}

@@ -1,0 +1,81 @@
+root@SRX-top> show ospf database extensive | no-more
+
+    OSPF database, Area 0.0.0.0
+ Type       ID               Adv Rtr           Seq      Age  Opt  Cksum  Len
+Router  *10.255.255.1     10.255.255.1     0x8000000d  1750  0x22 0xefb9  84
+  bits 0x0, link count 5
+  id 100.100.100.0, data 192.168.0.1, Type PointToPoint (1)
+    Topology count: 0, Default metric: 21
+  id 192.168.0.0, data 255.255.255.252, Type Stub (3)
+    Topology count: 0, Default metric: 1
+  id 10.255.255.2, data 10.0.0.1, Type PointToPoint (1)
+    Topology count: 0, Default metric: 1
+  id 10.0.0.0, data 255.255.255.252, Type Stub (3)
+    Topology count: 0, Default metric: 1
+  id 10.255.255.1, data 255.255.255.255, Type Stub (3)
+    Topology count: 0, Default metric: 0
+  Topology default (ID 0)
+    Type: PointToPoint, Node ID: 10.255.255.2
+      Metric: 1, Bidirectional
+    Type: PointToPoint, Node ID: 100.100.100.0
+      Metric: 1, Bidirectional
+  Gen timer 00:20:49
+  Aging timer 00:30:49
+  Installed 00:29:10 ago, expires in 00:30:50, sent 00:29:08 ago
+  Last changed 02:09:10 ago, Change count: 8, Ours
+Router   10.255.255.2     10.255.255.2     0x8000000d   569  0x22 0xaf15  60
+  bits 0x0, link count 3
+  id 10.255.255.1, data 10.0.0.2, Type PointToPoint (1)
+    Topology count: 0, Default metric: 1
+  id 10.0.0.0, data 255.255.255.252, Type Stub (3)
+    Topology count: 0, Default metric: 1
+  id 10.255.255.2, data 255.255.255.255, Type Stub (3)
+    Topology count: 0, Default metric: 0
+  Topology default (ID 0)
+    Type: PointToPoint, Node ID: 10.255.255.1
+      Metric: 1, Bidirectional
+  Aging timer 00:50:30
+  Installed 00:09:20 ago, expires in 00:50:31, sent 00:09:18 ago
+  Last changed 02:09:17 ago, Change count: 6
+Router   100.100.100.0    100.100.100.0    0x8000000c   522  0x22 0x6181  60
+  bits 0x0, link count 3
+  id 10.255.255.1, data 192.168.0.2, Type PointToPoint (1)
+    Topology count: 0, Default metric: 1
+  id 192.168.0.0, data 255.255.255.252, Type Stub (3)
+    Topology count: 0, Default metric: 1
+  id 192.168.12.2, data 192.168.12.1, Type Transit (2)
+    Topology count: 0, Default metric: 1
+  Topology default (ID 0)
+    Type: Transit, Node ID: 192.168.12.2
+      Metric: 1, Bidirectional
+    Type: PointToPoint, Node ID: 10.255.255.1
+      Metric: 1, Bidirectional
+  Aging timer 00:51:17
+  Installed 00:08:41 ago, expires in 00:51:18, sent 00:08:41 ago
+  Last changed 00:08:41 ago, Change count: 7
+Router   100.100.100.2    100.100.100.2    0x8000000c   523  0x22 0x4556  48
+  bits 0x0, link count 2
+  id 192.168.12.2, data 192.168.12.2, Type Transit (2)
+    Topology count: 0, Default metric: 1
+  id 100.100.100.2, data 255.255.255.255, Type Stub (3)
+    Topology count: 0, Default metric: 0
+  Topology default (ID 0)
+    Type: Transit, Node ID: 192.168.12.2
+      Metric: 1, Bidirectional
+  Aging timer 00:51:16
+  Installed 00:08:41 ago, expires in 00:51:17, sent 00:08:41 ago
+  Last changed 00:08:41 ago, Change count: 3
+Network  192.168.12.2     100.100.100.2    0x80000002   523  0x22 0x79bc  32
+  mask 255.255.255.0
+  attached router 100.100.100.2
+  attached router 100.100.100.0
+  Topology default (ID 0)
+    Type: Transit, Node ID: 100.100.100.0
+      Metric: 0, Bidirectional
+    Type: Transit, Node ID: 100.100.100.2
+      Metric: 0, Bidirectional
+  Aging timer 00:51:16
+  Installed 00:08:41 ago, expires in 00:51:17, sent 00:08:41 ago
+  Last changed 00:08:41 ago, Change count: 1
+
+root@SRX-top>
