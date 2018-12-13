@@ -11,7 +11,7 @@ The script seems to also work with the output of Cisco ASAs and IOS-XE (it is
 basically identical to that of IOS).
 
 Support has been added for broadcast networks. At the moment it just shows the DR as
-opposed to the full network / mask as this information in not available in the output of
+opposed to the full network / mask as this information is not available in the output of
 "show ip ospf database router". I may add support to populate the missing details from
 the output of "show ip ospf network" later.
 
@@ -21,12 +21,15 @@ based on hostnames. Simply tell it what your separator is and whether to use the
 first or last part as the site ID. Simple but handles common hostname formats
 like "rtr1.site" or "site-rtr1".
 
-This script requires Python 3.
+The script juni-ospfcli2dot.py takes the output of "show ospf database extensive" on
+JunOS devices and performs the same function.
+
+These scripts require Python 3.
 
 Usage - Linux / Mac
 ===================
 
-Set the ospfcli2dot.py file as executable (chmod 755 ospfcli2dot.py) then run it
+Set all python files as executable (chmod 755 *.py) then run
 
 Usage - Windows
 ===============
