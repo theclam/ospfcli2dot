@@ -177,7 +177,7 @@ with open(filename, 'r') as infile:
 		if(m):
 			transit = m.group(1)
 			continue
-		m = re.search('TOS 0 Metrics: (\d*)', line)
+		m = re.search('\s+TOS\s+\d\s+Metric(s)?:\s+(\d*)', line)
 		if(m):
 			if(neighbour is not None):
 				rtr.addlink(neighbour, interfaceip, m.group(1))
