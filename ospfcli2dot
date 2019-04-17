@@ -15,7 +15,7 @@ import re
 def toslash(str):
 	# Dictionary to convert masks to slash notation
 	return {
-		'0.0.0.0':			'/0',
+		'0.0.0.0':		'/0',
 		'128.0.0.0':		'/1',
 		'192.0.0.0':		'/2',
 		'224.0.0.0':		'/3',
@@ -134,6 +134,37 @@ class Router:
 		rv +=('"]\n')
 		return(rv)
 
+class Transit:
+	# Class to store a single transit network's identity and routers connected to it
+	def __init__(self, dr, router):
+		self.dr = dr
+		self.routers = []
+		self.routers.append(router)
+
+	def __eq__(self, other):
+		if isinstance(other, self.__class__):
+			return self.dr == other.dr
+		else:
+			return False
+
+	def __ne__(self, other):
+		return not self.__eq__(other)
+
+	def addrouter(self, router):
+		self.routers.append(router)
+
+	def groupname(self, separator, firstlast):
+		groupnameoutput = None
+		for router in self.routers:
+			if (r.hostname == r.routerid):
+				return None
+			thisareaname = router.hostname.split(separator)[firstlast]
+			if (groupnameoutput == None):
+				groupnameoutput = thisareaname
+			if (groupnameoutput != thisareaname):
+				return None
+		return groupnameoutput
+
 routers=[]
 links=[]
 transits=[]
@@ -144,7 +175,7 @@ print("v0.4 alpha, By Foeh Mannay, September 2018\n")
 filename = input("Enter input filename: ")
 neighbour = None
 stubnet = None
-transit = None
+transitdr = None
 
 with open(filename, 'r') as infile:
 	for line in infile:
@@ -175,7 +206,7 @@ with open(filename, 'r') as infile:
 			continue
 		m = re.search('\(Link ID\) Designated Router address: (\d*.\d*.\d*.\d*)', line)
 		if(m):
-			transit = m.group(1)
+			transitdr = m.group(1)
 			continue
 		m = re.search('TOS 0 Metrics: (\d*)', line)
 		if(m):
@@ -187,11 +218,15 @@ with open(filename, 'r') as infile:
 				rtr.addstub(stubnet, stubmask, m.group(1))
 				stubnet = None
 				stubmask = None
-			elif(transit is not None):
-				if(transit not in transits):
-					transits.append(transit)
-				rtr.addtransit(transit, m.group(1))
-				transit = None
+			elif(transitdr is not None):
+				existingtransit = next((x for x in transits if x.dr == transitdr), None)
+				if(existingtransit is None):
+					existingtransit = Transit(transitdr, rtr)
+					transits.append(existingtransit)
+				else:
+					existingtransit.addrouter(rtr)
+				rtr.addtransit(existingtransit, m.group(1))
+				transitdr = None
 			continue
 
 filename = input("Enter hostnames file or press enter to continue without one: ")
@@ -224,7 +259,7 @@ if(len(separator) > 0):
 		firstlast = -1
 	for r in routers:
 		if (r.hostname != r.routerid):
-			areas.add(r.hostname.split(separator)[0])
+			areas.add(r.hostname.split(separator)[firstlast])
 else: 
 	areas = None
 
@@ -238,24 +273,35 @@ with open(filename, 'w') as outfile:
 			for r in routers:
 				if(r.hostname.split(separator)[firstlast] == a):
 					outfile.write(r.dottifyrouter())
+			for t in transits:
+				# Create items for transit networks in this area
+				if (t.groupname(separator, firstlast) == a):
+					outfile.write('\tt' + re.sub('\.','x',t.dr) + ' [label="LAN with DR\\n' + t.dr + '", shape=box]\n')
 			outfile.write("}\n")
+
 		for r in routers:
 			if(r.hostname == r.routerid):
 				outfile.write(r.dottifyrouter())
 
-	# Otherwise just dump out the routers:	
+		for t in transits:
+			# Create items for transit networks in multiple or no areas
+			if (t.groupname(separator, firstlast) is None):
+				outfile.write('\tt' + re.sub('\.','x',t.dr) + ' [label="LAN with DR\\n' + t.dr + '", shape=box]\n')
+
+	# Otherwise just dump out the routers
 	else:
 		for r in routers:
 			# Ask each Router object in turn to describe itself
 			outfile.write(r.dottifyrouter())
 
-	for t in transits:
-		# Create items for transit networks
-		outfile.write('\tt' + re.sub('\.','x',t) + ' [label="LAN with DR\\n' + t + '", shape=box]\n')
+		for t in transits:
+			# Create items for transit networks
+			outfile.write('\tt' + re.sub('\.','x',t.dr) + ' [label="LAN with DR\\n' + t.dr + '", shape=box]\n')
+
 	for r in routers:
 		for t in r.transits:
 			# Dump transit connections
-			outfile.write('\th' + re.sub('\.','x',r.routerid) + ' -> t' + re.sub('\.','x',t[0]) + '[label="' + t[1] + '"]\n')
+			outfile.write('\th' + re.sub('\.','x',r.routerid) + ' -> t' + re.sub('\.','x',t[0].dr) + '[label="' + t[1] + '"]\n')
 		for l in r.links:
 			# Create a list of all router links (src, dest, IP, metric, style)
 			links.append([r.routerid, l[0], l[1], l[2], 'forward color="red"'])
@@ -263,4 +309,3 @@ with open(filename, 'w') as outfile:
 		# Pair up symmetrically costed links (so we get an undirected edge rather than two directed edges) then output to the DOT file 
 		outfile.write('\th' + re.sub('\.','x',l[0]) + ' -> h' + re.sub('\.','x',l[1]) + '[label="' + l[3] + '", dir=' + l[4] + ']\n')
 	outfile.write("}\n")
-
