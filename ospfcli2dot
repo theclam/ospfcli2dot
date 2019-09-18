@@ -234,7 +234,7 @@ with open(filename, 'w') as outfile:
 	# If we have areas defined, create them and put the routers inside:
 	if(areas is not None):
 		for a in areas:
-			outfile.write("subgraph cluster_" + a + " {\n\tlabel=\"" + a + "\"\n")
+			outfile.write("subgraph cluster_" + re.sub(r"[^a-zA-Z_]", "_", a) + " {\n\tlabel=\"" + a + "\"\n")
 			for r in routers:
 				if(r.hostname.split(separator)[firstlast] == a):
 					outfile.write(r.dottifyrouter())
