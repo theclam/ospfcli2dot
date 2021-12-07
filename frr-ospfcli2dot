@@ -1,0 +1,447 @@
+#!/usr/bin/python3
+"""
+Converts the output of the "show ip ospf database router" command into a GraphViz DOT
+file.
+
+The DOT file can then be used to automatically plot network topology diagrams and, while
+the layout can often leave a lot to be desired, it is very easy to spot asymmetric OSPF
+costs and other anomalies. Routers are enumerated first so you can group them by hand if
+you so desire.
+"""
+# ospfcli2dot - original by Foeh Mannay 2018
+# Modified for FRR output and various fixes Don Fedyk
+# black formatted 4 space vs tab
+# pylint3 checked. 9/10
+# Reduce_links never would work fixed it needs to be a 2 deep nested loop.
+# TODO: Not hardened for input.
+#
+
+import re
+import argparse
+import os
+
+
+def toslash(my_str):
+    """
+    Dictionary to convert masks to slash notation
+    """
+    return {
+        "0.0.0.0": "/0",
+        "128.0.0.0": "/1",
+        "192.0.0.0": "/2",
+        "224.0.0.0": "/3",
+        "240.0.0.0": "/4",
+        "248.0.0.0": "/5",
+        "252.0.0.0": "/6",
+        "254.0.0.0": "/7",
+        "255.0.0.0": "/8",
+        "255.128.0.0": "/9",
+        "255.192.0.0": "/10",
+        "255.224.0.0": "/11",
+        "255.240.0.0": "/12",
+        "255.248.0.0": "/13",
+        "255.252.0.0": "/14",
+        "255.254.0.0": "/15",
+        "255.255.0.0": "/16",
+        "255.255.128.0": "/17",
+        "255.255.192.0": "/18",
+        "255.255.224.0": "/19",
+        "255.255.240.0": "/20",
+        "255.255.248.0": "/21",
+        "255.255.252.0": "/22",
+        "255.255.254.0": "/23",
+        "255.255.255.0": "/24",
+        "255.255.255.128": "/25",
+        "255.255.255.192": "/26",
+        "255.255.255.224": "/27",
+        "255.255.255.240": "/28",
+        "255.255.255.248": "/29",
+        "255.255.255.252": "/30",
+        "255.255.255.254": "/31",
+        "255.255.255.255": "/32",
+    }[my_str]
+
+
+def to_decimal(addr):
+    """
+    Converts an IP address to a decimal
+    """
+    addrlist = addr.split(".")
+    return int(addrlist[3]) + 256 * (
+        int(addrlist[2]) + 256 * (int(addrlist[1]) + 256 * int(addrlist[0]))
+    )
+
+
+def same_p2p(addr1, addr2):
+    """
+    Returns true if the two addresses provided are one apart
+    (assume same /30 or /31 network)
+    """
+    return to_decimal(addr1) - to_decimal(addr2) == 1
+
+
+def reduce_links_links(my_list):
+    """
+    Takes a list of links and merges entries for two ends
+    of the same link, provided the metric matches
+    """
+    outer_index = 0
+    while outer_index < len(my_list):
+        inner_index = outer_index + 1
+        while inner_index < len(my_list):
+            if (my_list[outer_index][0] == my_list[inner_index][1]
+                    and my_list[inner_index][0] == my_list[outer_index][1]
+                    # and same_p2p(my_list[outer_index][2], my_list[inner_index][2])
+                    and my_list[outer_index][3] == my_list[inner_index][3]
+                    and my_list[outer_index][4] == my_list[inner_index][4]
+               ):
+                # if two links are A->B and B->A and in same subnet and
+                # in same subnet and have same metric then merge into an undirected edge
+                my_list[outer_index][4] = "none"
+                my_list.remove(my_list[inner_index])
+
+            else:
+                inner_index += 1
+        outer_index += 1
+    return my_list
+
+def merge_sort(my_list):
+    """
+    Performs a standard merge sort on a list of link entries based on IP address
+    """
+    sort_list = []
+    listlen = len(my_list)
+    i = 0
+    j = 0
+    if listlen > 1:
+        # If we have 2 or more items, split the list and merge sort each half
+        left = merge_sort(my_list[: listlen // 2])
+        right = merge_sort(my_list[listlen // 2 :])
+        # Then merge the two sorted halves together
+        while i < len(left) and j < len(right):
+            if to_decimal(left[i][2]) < to_decimal(right[j][2]):
+                sort_list.append(left[i])
+                i = i + 1
+            else:
+                sort_list.append(right[j])
+                j = j + 1
+        while i < len(left):
+            sort_list.append(left[i])
+            i = i + 1
+        while j < len(right):
+            sort_list.append(right[j])
+            j = j + 1
+    else:
+        sort_list = my_list
+    return sort_list
+
+
+class Router(object):
+    """
+    # Class to store a single router's identity, stub networks and links
+    """
+    def __init__(self, rid):
+        self.routerid = rid
+        self.hostname = rid
+        self.stubs = []
+        self.links = []
+        self.transits = []
+        self.position = ""
+
+    def sethostname(self, string):
+        """
+        Set the hostname
+        """
+        self.hostname = string
+
+    def addstub(self, subnet, mask, metric):
+        """
+        Add a Stub
+        """
+        self.stubs.append([subnet, mask, metric])
+
+    def addlink(self, neighbr, ip_addr, metric):
+        """
+        Add a Link
+        """
+        self.links.append([neighbr, ip_addr, metric])
+
+    def addtransit(self, d_r, metric):
+        """
+        Add a transit Node
+        """
+        self.transits.append([d_r, metric])
+
+    def dottifyrouter(self, decimal_num, add_stubs):
+        """
+        Produces a DOT representation of the router this object represents
+        """
+        if self.routerid != self.hostname:
+            r_v = re.sub(r"-", "_", self.hostname) + ' [label="' + self.routerid
+        else:
+            r_v = "h" + re.sub(r"\.", "x", self.routerid) + ' [label="' + self.routerid
+        if self.routerid != self.hostname:
+            # Print the decimal equivalent
+            if decimal_num:
+                num = str(to_decimal(self.routerid))
+                r_v = r_v + "\\n" + self.hostname + "\\n" + num
+            else:
+                num = ""
+                r_v = r_v + "\\n" + self.hostname
+        # Unhash this if you want all stubs to be listed on your nodes
+        if add_stubs:
+            for i in self.stubs:
+                r_v += "\\n" + i[0] + toslash(i[1])
+        r_v += self.position + '"]\n'
+        return r_v
+
+    def setposition(self, x_coord, y_coord):
+        """
+        Set position for Dot File
+        """
+        self.position = '", pos = "' + x_coord + "," + y_coord + "!"
+
+
+
+print(
+    'ospfcli2dot - takes the output of "show ip ospf database router"' +
+    'and optionally a hostfile\noutputs a GraphViz DOT file ' +
+    'corresponding to the network topology\n'
+)
+print("v0.4 alpha, By Foeh Mannay, September 2018\n")
+print("v0.5 , By Don Fedyk November 2021\n")
+
+
+def read_source(source_file, hosts_file, destination, decimal_num, add_stubs):
+    """
+    Main Source read file for Caas
+    """
+    routers = []
+    links = []
+    transits = []
+    areas = []
+    reduce_links = 'n'
+    lookup = []
+    neighbour = None
+    stubnet = None
+    transit = None
+    with open(source_file, "r") as infile:
+        for line in infile:
+            scan = re.search(r"Link State ID: (\d*.\d*.\d*.\d*)", line)
+            if scan:
+                rtr = Router(scan.group(1))
+                routers.append(rtr)
+                continue
+            scan = re.search(r"Advertising Router: (\S*)", line)
+            if scan:
+                rtr.sethostname(scan.group(1))
+                continue
+            scan = re.search(r"\(Link ID\) Net: (\d*.\d*.\d*.\d*)", line)
+            if scan:
+                stubnet = scan.group(1)
+                continue
+            scan = re.search(r"\(Link Data\) Network Mask: (\d*.\d*.\d*.\d*)", line)
+            if scan:
+                stubmask = scan.group(1)
+                continue
+            scan = re.search(r"\(Link ID\) Neighboring Router ID: (\d*.\d*.\d*.\d*)", line)
+            if scan:
+                neighbour = scan.group(1)
+                continue
+            scan = re.search(r"\(Link Data\) Router Interface address: (\d*.\d*.\d*.\d*)", line)
+            if scan:
+                interfaceip = scan.group(1)
+                continue
+            scan = re.search(r"\(Link ID\) Designated Router address: (\d*.\d*.\d*.\d*)", line)
+            if scan:
+                transit = scan.group(1)
+                continue
+            # This is modifed for FRR
+            # m = re.search('TOS 0 Metrics: (\d*)', line)
+            # Changed to "(?s)" which should match if there is an s
+            scan = re.search(r"TOS 0 Metric(?s): (\d*)", line)
+            if scan:
+                if neighbour is not None:
+                    rtr.addlink(neighbour, interfaceip, scan.group(1))
+                    neighbour = None
+                    interfaceip = None
+                elif stubnet is not None:
+                    rtr.addstub(stubnet, stubmask, scan.group(1))
+                    stubnet = None
+                    stubmask = None
+                elif transit is not None:
+                    if transit not in transits:
+                        transits.append(transit)
+                    rtr.addtransit(transit, scan.group(1))
+                    transit = None
+                continue
+
+    if hosts_file:
+        # Host file is either 4 space separated fields or 2
+        # Host addr    Host Name      X pos Y pos
+        # 1.1.1.1        Node-A       0.0   0.8
+        # OR
+        # 1.1.1.1        Node-A
+        # Note the Name will replace h1x1x7x0 references
+        # Note "-" are replaced by "_" becasue links cannot have "-"
+        # But labels have "-" Position is only honored by the fdp format.
+
+        with open(hosts_file, "r") as infile:
+            for line in infile:
+                splitline = line.split()
+                # Discard anything which is not in the x.x.x.x xxxxx format
+                if len(splitline) != 2 and len(splitline) != 4:
+                    continue
+                if splitline[0][0] == "#":
+                    continue
+                # Try to find an IP and update hostnames if found...
+                scan = re.search(r"(\d*.\d*.\d*.\d*)", splitline[0])
+                if scan:
+                    for r in routers:
+                        if r.routerid == splitline[0]:
+                            r.sethostname(splitline[1])
+                            lookup.append({"router": r.routerid, "hostname": r.hostname})
+                            if len(splitline) == 4:
+                                r.setposition(splitline[2], splitline[3])
+
+
+    separator = input(
+        "If you want to group by hostname, enter the separator now\n (or press enter to continue): "
+    )
+    if separator:
+        first_last = ""
+        while (first_last != "f") & (first_last != "l"):
+            first_last = input(
+                "Do you want to group by the [f]irst or [l]ast part of the hostname? "
+            )
+        areas = set()
+        if first_last == "f":
+            first_last = 0
+        else:
+            first_last = -1
+        for r in routers:
+            if r.hostname != r.routerid:
+                areas.add(r.hostname.split(separator)[0])
+    else:
+        areas = None
+
+    reduce_links = input(" Do you want to reduce_links links [y]es or [n]o? ")
+    while (reduce_links != "y") and (reduce_links != "n"):
+        reduce_links = input("[y]es or [n]o")
+
+    with open(destination, "w") as outfile:
+        outfile.write("digraph Topology {\n")
+        # If we have areas defined, create them and put the routers inside:
+        if areas is not None:
+            for a in areas:
+                outfile.write("subgraph cluster_" + a + ' {\n\tlabel="' + a + '"\n')
+                for r in routers:
+                    if r.hostname.split(separator)[first_last] == a:
+                        outfile.write('\t' + r.dottifyrouter(decimal_num, add_stubs))
+                outfile.write("\t}\n")
+            for r in routers:
+                if r.hostname == r.routerid:
+                    outfile.write('\t' + r.dottifyrouter(decimal_num, add_stubs))
+
+        # Otherwise just dump out the routers:
+        else:
+            for r in routers:
+                # Ask each Router object in turn to describe itself
+                outfile.write('\t' + r.dottifyrouter(decimal_num, add_stubs))
+
+
+        for t in transits:
+            # Create items for transit networks
+            outfile.write(
+                "\tt" + re.sub(r"\.", "x", t) + ' [label="LAN with DR\\n' + t + '", shape=box]\n'
+            )
+        for r in routers:
+            for t in r.transits:
+                if r.routerid != r.hostname:
+                    name = re.sub(r"-", "_", r.hostname)
+                else:
+                    name = "h" + re.sub(r"\.", "x", r.routerid)
+                # Dump transit connections Make them Bidirectional
+                outfile.write(
+                    "\t"
+                    + name
+                    + " -> t"
+                    + re.sub(r"\.", "x", t[0])
+                    + '[label="'
+                    + t[1]
+                    + '", weight='
+                    + t[1]
+                    + ', dir=forward'
+                    + ']\n'
+                )
+                outfile.write(
+                    "\tt"
+                    + re.sub(r"\.", "x", t[0])
+                    + " -> "
+                    + name
+                    + '[label="'
+                    + t[1]
+                    + '", weight='
+                    + t[1]
+                    + ', dir=forward'
+                    + ']\n'
+                )
+            for r_l in r.links:
+                # Create a list of all router links (src, dest, IP, metric, style)
+                if r.routerid != r.hostname:
+                    name = re.sub(r"-", "_", r.hostname)
+                    index = next((i for i, item in enumerate(lookup)
+                                  if item["router"] == r_l[0]), None)
+                    hostname = re.sub(r"-", "_", lookup[index].get("hostname"))
+                else:
+                    name = "h" + re.sub(r"\.", "x", r.routerid)
+                    hostname = "h" + r_l[0]
+                links.append([name, hostname, r_l[1], r_l[2], 'forward color="blue"'])
+
+        if reduce_links == 'y':
+            links = reduce_links_links(merge_sort(links))
+            # Pair up symmetrically costed links (so we get an undirected edge
+            # rather than two directed edges) then output to the DOT file
+            # Note primarily for drawing simplicity.
+        else:
+            links = merge_sort(links)
+
+        for s_l in links:
+            outfile.write(
+                "\t"
+                + s_l[0]
+                + " -> "
+                + re.sub(r"\.", "x", s_l[1])
+                + '[label="'
+                + s_l[3]
+                + '", weight='
+                + s_l[3]
+                + ', dir='
+                + s_l[4]
+                + "]\n"
+            )
+        outfile.write("}\n")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Extract Topology from OSPF ")
+    parser.add_argument("source_file", help="The file name for the input OSPF Database text file")
+    parser.add_argument("destination_file", help="The file name for the output dot file")
+    parser.add_argument(
+        "--hosts_file", help="The file name for the input Host Names Database text file")
+    parser.add_argument("--ip_decimal", default=False, help="Print IP in decimal format")
+    parser.add_argument("--add_stubs", default=True, help="Print Stub networks in node")
+    #parser.add_argument('-v', '--verbose', default=False, help="Optional:Verbose printing")
+    args = parser.parse_args()
+    ip_decimal = eval (str(args.ip_decimal))
+    add_stubs = eval (str(args.add_stubs))
+    if os.path.isfile(args.destination_file):
+        over_write = input(
+            "Destination file already exists. Overwrite? Y = yes, N = no\n"
+        )
+        if over_write.lower() != "y":
+            # call the function that writes the file here. use 'w' on the open handle
+            print("Aborting -- output file exists.")
+        else:
+            read_source(args.source_file, args.hosts_file, args.destination_file, ip_decimal, add_stubs)
+    else:
+        read_source(args.source_file, args.hosts_file, args.destination_file, ip_decimal, add_stubs)
