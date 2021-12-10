@@ -15,6 +15,7 @@ you so desire.
 # Reduce_links never would work fixed it needs to be a 2 deep nested loop.
 # TODO: Not hardened for input.
 #
+# Added a force option to ease the calling of this from scripts.
 
 import re
 import argparse
@@ -172,7 +173,7 @@ class Router(object):
         """
         self.transits.append([d_r, metric])
 
-    def dottifyrouter(self, decimal_num, add_stubs):
+    def dottifyrouter(self, decimal_num, stubs):
         """
         Produces a DOT representation of the router this object represents
         """
@@ -189,7 +190,7 @@ class Router(object):
                 num = ""
                 r_v = r_v + "\\n" + self.hostname
         # Unhash this if you want all stubs to be listed on your nodes
-        if add_stubs:
+        if stubs:
             for i in self.stubs:
                 r_v += "\\n" + i[0] + toslash(i[1])
         r_v += self.position + '"]\n'
@@ -208,11 +209,11 @@ print(
     'and optionally a hostfile\noutputs a GraphViz DOT file ' +
     'corresponding to the network topology\n'
 )
-print("v0.4 alpha, By Foeh Mannay, September 2018\n")
-print("v0.5 , By Don Fedyk November 2021\n")
+#print("v0.4 alpha, By Foeh Mannay, September 2018\n")
+#print("v0.5 , By Don Fedyk November 2021\n")
 
 
-def read_source(source_file, hosts_file, destination, decimal_num, add_stubs):
+def read_source(source_file, hosts_file, destination, decimal_num, stubs):
     """
     Main Source read file for Caas
     """
@@ -337,17 +338,17 @@ def read_source(source_file, hosts_file, destination, decimal_num, add_stubs):
                 outfile.write("subgraph cluster_" + a + ' {\n\tlabel="' + a + '"\n')
                 for r in routers:
                     if r.hostname.split(separator)[first_last] == a:
-                        outfile.write('\t' + r.dottifyrouter(decimal_num, add_stubs))
+                        outfile.write('\t' + r.dottifyrouter(decimal_num, stubs))
                 outfile.write("\t}\n")
             for r in routers:
                 if r.hostname == r.routerid:
-                    outfile.write('\t' + r.dottifyrouter(decimal_num, add_stubs))
+                    outfile.write('\t' + r.dottifyrouter(decimal_num, stubs))
 
         # Otherwise just dump out the routers:
         else:
             for r in routers:
                 # Ask each Router object in turn to describe itself
-                outfile.write('\t' + r.dottifyrouter(decimal_num, add_stubs))
+                outfile.write('\t' + r.dottifyrouter(decimal_num, stubs))
 
 
         for t in transits:
@@ -430,18 +431,21 @@ if __name__ == "__main__":
         "--hosts_file", help="The file name for the input Host Names Database text file")
     parser.add_argument("--ip_decimal", default=False, help="Print IP in decimal format")
     parser.add_argument("--add_stubs", default=True, help="Print Stub networks in node")
+    parser.add_argument("--force_output", default=False, help="Don't check for output file")
     #parser.add_argument('-v', '--verbose', default=False, help="Optional:Verbose printing")
     args = parser.parse_args()
-    ip_decimal = eval (str(args.ip_decimal))
-    add_stubs = eval (str(args.add_stubs))
-    if os.path.isfile(args.destination_file):
+    ip_decimal = eval(str(args.ip_decimal))
+    add_stubs = eval(str(args.add_stubs))
+    force_output = eval(str(args.force_output))
+    abort = False
+    # Prevent overwriting of files unless the user forces it - you can destroy data - be careful.
+    if not force_output and os.path.isfile(args.destination_file):
         over_write = input(
             "Destination file already exists. Overwrite? Y = yes, N = no\n"
         )
         if over_write.lower() != "y":
             # call the function that writes the file here. use 'w' on the open handle
             print("Aborting -- output file exists.")
-        else:
-            read_source(args.source_file, args.hosts_file, args.destination_file, ip_decimal, add_stubs)
-    else:
+            abort = True
+    if not abort:
         read_source(args.source_file, args.hosts_file, args.destination_file, ip_decimal, add_stubs)
