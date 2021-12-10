@@ -4,27 +4,42 @@ frr-ospfcli2dot - takes the output of "show ip ospf database router"and optional
 outputs a GraphViz DOT file corresponding to the network topology
 
 usage: frr-ospfcli2dot [-h] [--hosts_file HOSTS_FILE]
+
                        [--ip_decimal IP_DECIMAL] [--add_stubs ADD_STUBS]
+                       
                        [--force_output FORCE_OUTPUT]
+                       
                        source_file destination_file
 
 Extract Topology from OSPF
 
 positional arguments:
+
   source_file           The file name for the input OSPF Database text file
+  
   destination_file      The file name for the output dot file
 
 optional arguments:
+
   -h, --help            show this help message and exit
+  
   --hosts_file HOSTS_FILE
+  
                         The file name for the input Host Names Database text
+                        
                         file
   --ip_decimal IP_DECIMAL
+  
                         Print IP in decimal format
+                        
   --add_stubs ADD_STUBS
+  
                         Print Stub networks in node
+                        
   --force_output FORCE_OUTPUT
+  
                         Don't check for output file
+                        
 
 This is the original - for other OS.
 
