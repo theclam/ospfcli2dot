@@ -205,7 +205,7 @@ class Router(object):
 
 
 print(
-    'ospfcli2dot - takes the output of "show ip ospf database router"' +
+    'frr-ospfcli2dot - takes the output of "show ip ospf database router"' +
     'and optionally a hostfile\noutputs a GraphViz DOT file ' +
     'corresponding to the network topology\n'
 )
