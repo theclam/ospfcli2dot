@@ -147,7 +147,7 @@ class Router(object):
         self.stubs = []
         self.links = []
         self.transits = []
-        self.position = ""
+        self.dot_string = ""
 
     def sethostname(self, string):
         """
@@ -173,7 +173,7 @@ class Router(object):
         """
         self.transits.append([d_r, metric])
 
-    def dottifyrouter(self, decimal_num, stubs):
+    def dottifyrouter(self, decimal_num, add_stubs):
         """
         Produces a DOT representation of the router this object represents
         """
@@ -181,39 +181,38 @@ class Router(object):
             r_v = re.sub(r"-", "_", self.hostname) + ' [label="' + self.routerid
         else:
             r_v = "h" + re.sub(r"\.", "x", self.routerid) + ' [label="' + self.routerid
-        if self.routerid != self.hostname:
-            # Print the decimal equivalent
-            if decimal_num:
-                num = str(to_decimal(self.routerid))
-                r_v = r_v + "\\n" + self.hostname + "\\n" + num
-            else:
-                num = ""
-                r_v = r_v + "\\n" + self.hostname
+        # Print the decimal equivalent
+        if decimal_num:
+            num = str(to_decimal(self.routerid))
+            r_v = r_v + "\\n" + self.hostname + "\\n" + num
+        else:
+            num = ""
+            r_v = r_v + "\\n" + self.hostname
         # Unhash this if you want all stubs to be listed on your nodes
-        if stubs:
+        if add_stubs:
             for i in self.stubs:
                 r_v += "\\n" + i[0] + toslash(i[1])
-        r_v += self.position + '"]\n'
+        r_v += '\",' + self.dot_string + ']\n'
         return r_v
 
-    def setposition(self, x_coord, y_coord):
+    def setdot_string(self, dot_string):
         """
-        Set position for Dot File
+        Set string for Dot File
         """
-        self.position = '", pos = "' + x_coord + "," + y_coord + "!"
+        self.dot_string = dot_string 
 
 
 
 print(
-    'ospfcli2dot - takes the output of "show ip ospf database router"' +
+    'frr-ospfcli2dot - takes the output of "show ip ospf database router"' +
     'and optionally a hostfile\noutputs a GraphViz DOT file ' +
     'corresponding to the network topology\n'
 )
 #print("v0.4 alpha, By Foeh Mannay, September 2018\n")
-#print("v0.5 , By Don Fedyk November 2021\n")
+#print("v0.5 , By Don Fedyk April 2022\n")
 
 
-def read_source(source_file, hosts_file, destination, decimal_num, stubs):
+def read_source(source_file, hosts_file, destination, decimal_num, add_stubs):
     """
     Main Source read file for Caas
     """
@@ -291,19 +290,19 @@ def read_source(source_file, hosts_file, destination, decimal_num, stubs):
             for line in infile:
                 splitline = line.split()
                 # Discard anything which is not in the x.x.x.x xxxxx format
-                if len(splitline) != 2 and len(splitline) != 4:
+                if len(splitline) < 2 or len(splitline) > 3:
                     continue
                 if splitline[0][0] == "#":
                     continue
                 # Try to find an IP and update hostnames if found...
                 scan = re.search(r"(\d*.\d*.\d*.\d*)", splitline[0])
-                if scan:
+                if scan is not None:
                     for r in routers:
                         if r.routerid == splitline[0]:
                             r.sethostname(splitline[1])
                             lookup.append({"router": r.routerid, "hostname": r.hostname})
-                            if len(splitline) == 4:
-                                r.setposition(splitline[2], splitline[3])
+                            if len(splitline) == 3:
+                                r.setdot_string(splitline[2])
 
 
     separator = input(
@@ -338,17 +337,17 @@ def read_source(source_file, hosts_file, destination, decimal_num, stubs):
                 outfile.write("subgraph cluster_" + a + ' {\n\tlabel="' + a + '"\n')
                 for r in routers:
                     if r.hostname.split(separator)[first_last] == a:
-                        outfile.write('\t' + r.dottifyrouter(decimal_num, stubs))
+                        outfile.write('\t' + r.dottifyrouter(decimal_num, add_stubs))
                 outfile.write("\t}\n")
             for r in routers:
                 if r.hostname == r.routerid:
-                    outfile.write('\t' + r.dottifyrouter(decimal_num, stubs))
+                    outfile.write('\t' + r.dottifyrouter(decimal_num, add_stubs))
 
         # Otherwise just dump out the routers:
         else:
             for r in routers:
                 # Ask each Router object in turn to describe itself
-                outfile.write('\t' + r.dottifyrouter(decimal_num, stubs))
+                outfile.write('\t' + r.dottifyrouter(decimal_num, add_stubs))
 
 
         for t in transits:
@@ -427,10 +426,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract Topology from OSPF ")
     parser.add_argument("source_file", help="The file name for the input OSPF Database text file")
     parser.add_argument("destination_file", help="The file name for the output dot file")
-    parser.add_argument(
-        "--hosts_file", help="The file name for the input Host Names Database text file")
-    parser.add_argument("--ip_decimal", default=False, help="Print IP in decimal format")
-    parser.add_argument("--add_stubs", default=True, help="Print Stub networks in node")
+    parser.add_argument("--hosts_file", help="The file name for the input Host Names Database text file")
+    parser.add_argument("--ip_decimal", default=True, help="Print IP in decimal format")
+    parser.add_argument("--add_stubs", default=True, help="Print node Stubs networks")
     parser.add_argument("--force_output", default=False, help="Don't check for output file")
     #parser.add_argument('-v', '--verbose', default=False, help="Optional:Verbose printing")
     args = parser.parse_args()
